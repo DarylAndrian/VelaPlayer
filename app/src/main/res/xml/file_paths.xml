@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path name="vela_media" path="media/" />
+    <external-files-path name="vela_external_media" path="VelaPlayer/" />
+    <external-path name="downloads" path="Download/VelaPlayer/" />
+    <cache-path name="vela_cache" path="." />
+</paths>

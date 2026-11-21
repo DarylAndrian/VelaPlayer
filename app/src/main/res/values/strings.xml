@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VelaPlayer</string>
+    <string name="download_channel_name">Media Downloads</string>
+    <string name="download_channel_desc">Progress notifications for YouTube and Instagram downloads</string>
+    <string name="pip_action_play">Play</string>
+    <string name="pip_action_pause">Pause</string>
+    <string name="pip_action_rewind">Rewind 10 seconds</string>
+    <string name="pip_action_forward">Forward 10 seconds</string>
+</resources>

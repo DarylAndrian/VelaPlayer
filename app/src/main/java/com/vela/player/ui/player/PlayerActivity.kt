@@ -13,6 +13,7 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.annotation.OptIn
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
@@ -27,10 +28,15 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import com.vela.player.R
 import com.vela.player.VelaPlayerApp
+import com.vela.player.data.downloader.AnalyzedMedia
+import com.vela.player.data.local.MediaSource
 import com.vela.player.data.local.MediaItemEntity
 import com.vela.player.data.local.MediaType
 import com.vela.player.data.local.UserSettings
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.HttpDataSource
 import com.vela.player.player.PlaybackQueueMode
 import com.vela.player.player.VelaPlayerController
 import com.vela.player.ui.theme.VelaTheme
@@ -66,6 +72,24 @@ class PlayerActivity : ComponentActivity() {
         }
     }
 
+    /** Set while playing a resolved web stream, so an expired signed URL can be re-resolved once. */
+    private var streamSourceUrl: String? = null
+    private var streamRefreshed = false
+
+    private val streamErrorListener = object : Player.Listener {
+        @OptIn(UnstableApi::class)
+        override fun onPlayerError(error: PlaybackException) {
+            val source = streamSourceUrl ?: return
+            val cause = error.cause
+            val expired = cause is HttpDataSource.InvalidResponseCodeException &&
+                (cause.responseCode == 403 || cause.responseCode == 410)
+            if (expired && !streamRefreshed) {
+                streamRefreshed = true
+                refreshStream(source)
+            }
+        }
+    }
+
     private val pipActionReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.getStringExtra(EXTRA_PIP_ACTION)) {
@@ -86,6 +110,7 @@ class PlayerActivity : ComponentActivity() {
 
         controller = VelaPlayerController(this)
         controller.exoPlayer.addListener(playbackEndListener)
+        controller.exoPlayer.addListener(streamErrorListener)
         rotationStep = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) 1 else 0
         registerPipReceiver()
         handleIntent(intent)
@@ -190,6 +215,7 @@ class PlayerActivity : ComponentActivity() {
     override fun onDestroy() {
         persistResumePosition()
         controller.exoPlayer.removeListener(playbackEndListener)
+        controller.exoPlayer.removeListener(streamErrorListener)
         runCatching { unregisterReceiver(pipActionReceiver) }
         controller.release()
         super.onDestroy()
@@ -200,6 +226,24 @@ class PlayerActivity : ComponentActivity() {
         val directPath = intent?.getStringExtra(EXTRA_MEDIA_PATH)
         val directTitle = intent?.getStringExtra(EXTRA_MEDIA_TITLE)
         val requestedQueue = intent?.getLongArrayExtra(EXTRA_QUEUE_IDS)?.toList().orEmpty()
+        val streamUrl = intent?.getStringExtra(EXTRA_STREAM_URL)
+        streamSourceUrl = if (streamUrl.isNullOrBlank()) null else intent?.getStringExtra(EXTRA_SOURCE_URL)
+        streamRefreshed = false
+        if (!streamUrl.isNullOrBlank()) {
+            val headers = intent?.getBundleExtra(EXTRA_STREAM_HEADERS)
+                ?.let { b -> b.keySet().associateWith { b.getString(it).orEmpty() } }
+                .orEmpty()
+            queue.value = emptyList()
+            currentMedia.value = MediaItemEntity(
+                id = -1L,
+                title = directTitle ?: "Dailymotion Video",
+                filePath = streamUrl,
+                sourcePlatform = MediaSource.DAILYMOTION.name,
+                sourceUrl = streamSourceUrl
+            )
+            controller.loadMedia(streamUrl, 0L, headers, isHls = true)
+            return
+        }
 
         lifecycleScope.launch {
             queue.value = loadQueue(requestedQueue, mediaId)
@@ -226,6 +270,16 @@ class PlayerActivity : ComponentActivity() {
             } else {
                 finish()
             }
+        }
+    }
+
+    /** Signed stream URLs expire after a few hours; fetch a fresh one and resume where we were. */
+    private fun refreshStream(sourceUrl: String) {
+        val resumeMs = controller.exoPlayer.currentPosition.coerceAtLeast(0L)
+        lifecycleScope.launch {
+            val fresh = app.linkAnalyzer.analyze(sourceUrl)
+            val url = fresh.streamUrl ?: return@launch
+            controller.loadMedia(url, resumeMs, fresh.streamHeaders, isHls = true)
         }
     }
 
@@ -435,6 +489,9 @@ class PlayerActivity : ComponentActivity() {
         private const val EXTRA_MEDIA_PATH = "extra_media_path"
         private const val EXTRA_MEDIA_TITLE = "extra_media_title"
         private const val EXTRA_QUEUE_IDS = "extra_queue_ids"
+        private const val EXTRA_STREAM_URL = "extra_stream_url"
+        private const val EXTRA_STREAM_HEADERS = "extra_stream_headers"
+        private const val EXTRA_SOURCE_URL = "extra_source_url"
         private const val ACTION_PIP_CONTROL = "com.vela.player.ACTION_PIP_CONTROL"
         private const val EXTRA_PIP_ACTION = "extra_pip_action"
         private const val PIP_ACTION_TOGGLE = "toggle"
@@ -451,6 +508,19 @@ class PlayerActivity : ComponentActivity() {
                 putExtra(EXTRA_MEDIA_PATH, mediaItem.filePath)
                 putExtra(EXTRA_MEDIA_TITLE, mediaItem.title)
                 putExtra(EXTRA_QUEUE_IDS, queueIds)
+            }
+        }
+
+        /** Streams an ad-free web video (resolved by [com.vela.player.data.downloader.LinkAnalyzer]). */
+        fun createStreamIntent(context: Context, media: AnalyzedMedia): Intent {
+            val headers = Bundle().apply {
+                media.streamHeaders.forEach { (k, v) -> putString(k, v) }
+            }
+            return Intent(context, PlayerActivity::class.java).apply {
+                putExtra(EXTRA_STREAM_URL, media.streamUrl)
+                putExtra(EXTRA_STREAM_HEADERS, headers)
+                putExtra(EXTRA_SOURCE_URL, media.url)
+                putExtra(EXTRA_MEDIA_TITLE, media.title)
             }
         }
     }

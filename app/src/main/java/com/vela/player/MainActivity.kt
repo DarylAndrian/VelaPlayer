@@ -95,6 +95,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun consumeShareIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_VIEW) {
+            val viewed = intent.dataString
+            if (!viewed.isNullOrBlank()) {
+                viewModel.handleSharedLink(viewed)
+                incomingShareTabTrigger++
+            }
+            return
+        }
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
             if (!sharedText.isNullOrBlank()) {
@@ -252,6 +260,7 @@ private fun VelaPlayerRoot(
                     onAnalyze = viewModel::analyzeCurrentLink,
                     onSelectOption = viewModel::selectDownloadOption,
                     onStartDownload = viewModel::startSelectedDownload,
+                    onStreamNow = { media -> context.startActivity(PlayerActivity.createStreamIntent(context, media)) },
                     onOpenInstagramLogin = viewModel::openInstagramLogin,
                     onCancelJob = viewModel::cancelDownload,
                     onDismissJob = viewModel::dismissDownload,

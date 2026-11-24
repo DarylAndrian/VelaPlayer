@@ -181,6 +181,9 @@ class DownloadRepository(
             addOption("-o", outputTemplate)
             addOption("--no-playlist")
             addOption("--no-mtime")
+            if (job.platform == DownloadPlatform.DAILYMOTION) {
+                addOption("--concurrent-fragments", "4")
+            }
             if (job.platform == DownloadPlatform.INSTAGRAM) {
                 cookieStore.getCookieFileIfPresent()?.let { cookieFile ->
                     addOption("--cookies", cookieFile.absolutePath)
@@ -241,6 +244,7 @@ class DownloadRepository(
             sourcePlatform = when (job.platform) {
                 DownloadPlatform.YOUTUBE -> MediaSource.YOUTUBE.name
                 DownloadPlatform.INSTAGRAM -> MediaSource.INSTAGRAM.name
+                DownloadPlatform.DAILYMOTION -> MediaSource.DAILYMOTION.name
                 DownloadPlatform.UNSUPPORTED -> MediaSource.LOCAL.name
             },
             sourceUrl = job.sourceUrl,

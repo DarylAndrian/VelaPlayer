@@ -3,6 +3,7 @@ package com.vela.player.data.downloader
 enum class DownloadPlatform(val label: String) {
     YOUTUBE("YouTube"),
     INSTAGRAM("Instagram"),
+    DAILYMOTION("Dailymotion"),
     UNSUPPORTED("Unsupported")
 }
 
@@ -36,7 +37,10 @@ data class AnalyzedMedia(
     val availableOptions: List<DownloadOption> = emptyList(),
     val imageUrls: List<String> = emptyList(),
     val requiresInstagramLogin: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** Direct ad-free stream (HLS) resolved by yt-dlp, when the platform supports instant watching. */
+    val streamUrl: String? = null,
+    val streamHeaders: Map<String, String> = emptyMap()
 )
 
 enum class DownloadStatus(val label: String) {

@@ -1,12 +1,14 @@
 # VelaPlayer
 
-VelaPlayer is a standalone Android app for saving YouTube and Instagram media on the phone, then playing it offline. Downloads stay on the device. There is no account server.
+VelaPlayer is a standalone Android app for saving YouTube, Instagram, and Dailymotion media on the phone, then playing it offline. Downloads stay on the device. There is no account server.
 
 The interface follows the Vela Emerald Slate design: dark `#09090B` / `#1E2230` / `#10B981`, and light `#FAFAFA` / `#FFFFFF` / `#10B981`.
 
 ## What it does
 
 **Downloader.** Paste a link, or share one from YouTube or Instagram. Pick 360p, 720p, 1080p, audio only, or the original image when the post is a photo. YouTube videos, Shorts, Instagram Reels, Stories, single photos, and carousels use the same screen. Stories and restricted posts can open an in-app Instagram login. That session stays in private app storage.
+
+**Dailymotion.** Paste a Dailymotion link and tap Watch now to stream it without ads, or save it as 360p, 720p, 1080p, or audio only. If a link cannot be read, update the yt-dlp engine in Settings and try again.
 
 **Library.** Saved videos, audio, and photos appear in an offline gallery. The app opens on the starred list. Switch to All to see everything, and filter by videos, audio, or images. Starred items and the last playback position are kept on the phone. The library can also import videos already stored on the device.
 
@@ -36,4 +38,4 @@ Kotlin, Jetpack Compose, Room, DataStore, Media3 ExoPlayer, Coil, and an on-devi
 
 ## Version
 
-Current release: **0.1.0**. See [CHANGELOG.md](CHANGELOG.md).
+Current release: **0.2.0**. See [CHANGELOG.md](CHANGELOG.md).

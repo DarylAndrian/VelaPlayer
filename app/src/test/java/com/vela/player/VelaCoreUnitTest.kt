@@ -2,6 +2,7 @@ package com.vela.player
 
 import com.vela.player.data.downloader.DownloadOption
 import com.vela.player.data.downloader.DownloadPlatform
+import com.vela.player.data.downloader.LinkAnalyzer
 import com.vela.player.player.VelaPlayerController
 import com.vela.player.util.FormatUtils
 import org.junit.Assert.assertEquals
@@ -35,20 +36,30 @@ class VelaCoreUnitTest {
     }
 
     @Test
-    fun platformDetectionRecognizesYoutubeAndInstagram() {
-        val lowerCheck: (String) -> DownloadPlatform = { url ->
-            val l = url.lowercase()
-            when {
-                l.contains("youtube.com/") || l.contains("youtu.be/") -> DownloadPlatform.YOUTUBE
-                l.contains("instagram.com/") || l.contains("instagr.am/") -> DownloadPlatform.INSTAGRAM
-                else -> DownloadPlatform.UNSUPPORTED
-            }
-        }
-        assertEquals(DownloadPlatform.YOUTUBE, lowerCheck("https://youtu.be/dQw4w9WgXcQ"))
-        assertEquals(DownloadPlatform.YOUTUBE, lowerCheck("https://www.youtube.com/shorts/abc123"))
-        assertEquals(DownloadPlatform.INSTAGRAM, lowerCheck("https://www.instagram.com/reel/CxYz123/"))
-        assertEquals(DownloadPlatform.INSTAGRAM, lowerCheck("https://www.instagram.com/stories/user/12345/"))
-        assertEquals(DownloadPlatform.INSTAGRAM, lowerCheck("https://www.instagram.com/p/CxYz123/"))
-        assertEquals(DownloadPlatform.UNSUPPORTED, lowerCheck("https://example.com/file"))
+    fun platformDetectionRecognizesYoutubeInstagramAndDailymotion() {
+        val detect = LinkAnalyzer.Companion::detectPlatformFromUrl
+        assertEquals(DownloadPlatform.YOUTUBE, detect("https://youtu.be/dQw4w9WgXcQ"))
+        assertEquals(DownloadPlatform.YOUTUBE, detect("https://www.youtube.com/shorts/abc123"))
+        assertEquals(DownloadPlatform.INSTAGRAM, detect("https://www.instagram.com/reel/CxYz123/"))
+        assertEquals(DownloadPlatform.INSTAGRAM, detect("https://www.instagram.com/stories/user/12345/"))
+        assertEquals(DownloadPlatform.INSTAGRAM, detect("https://www.instagram.com/p/CxYz123/"))
+        assertEquals(DownloadPlatform.DAILYMOTION, detect("https://www.dailymotion.com/video/x8abc12"))
+        assertEquals(DownloadPlatform.DAILYMOTION, detect("https://dai.ly/x8abc12"))
+        assertEquals(DownloadPlatform.DAILYMOTION, detect("https://www.dailymotion.com/embed/video/x8abc12"))
+        assertEquals(DownloadPlatform.UNSUPPORTED, detect("https://example.com/file"))
+    }
+
+    @Test
+    fun dailymotionUrlsNormalizeToCanonicalVideoLink() {
+        val canonical = "https://www.dailymotion.com/video/x8abc12"
+        val normalize = LinkAnalyzer.Companion::normalizeDailymotionUrl
+        assertEquals(canonical, normalize("https://www.dailymotion.com/video/x8abc12"))
+        assertEquals(canonical, normalize("https://www.dailymotion.com/video/x8abc12_some-title-slug"))
+        assertEquals(canonical, normalize("https://www.dailymotion.com/video/x8abc12?playlist=x6xyz&autoplay=1"))
+        assertEquals(canonical, normalize("https://dai.ly/x8abc12"))
+        assertEquals(canonical, normalize("https://www.dailymotion.com/embed/video/x8abc12?autoPlay=1"))
+        assertEquals(canonical, normalize("https://geo.dailymotion.com/player/xabc.html?video=x8abc12"))
+        val untouched = "https://www.dailymotion.com/playlist/x6xyz"
+        assertEquals(untouched, normalize(untouched))
     }
 }

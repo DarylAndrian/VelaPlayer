@@ -7,11 +7,15 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,10 +36,19 @@ data class PlayerPlaybackState(
  * Wraps AndroidX Media3 ExoPlayer for smooth offline playback, exact 1x–10x speed control,
  * and PiP aspect ratio tracking.
  */
+@OptIn(UnstableApi::class)
 class VelaPlayerController(context: Context) {
 
-    @OptIn(UnstableApi::class)
+    /** Shared HTTP factory so per-stream headers (Referer/User-Agent) can be swapped in before each load. */
+    private val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+        .setAllowCrossProtocolRedirects(true)
+
     val exoPlayer: ExoPlayer = ExoPlayer.Builder(context.applicationContext)
+        .setMediaSourceFactory(
+            DefaultMediaSourceFactory(
+                DefaultDataSource.Factory(context.applicationContext, httpDataSourceFactory)
+            )
+        )
         .setAudioAttributes(
             AudioAttributes.Builder()
                 .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
@@ -76,13 +89,27 @@ class VelaPlayerController(context: Context) {
         exoPlayer.addListener(listener)
     }
 
-    fun loadMedia(pathOrUri: String, resumePositionMs: Long = 0L) {
+    fun loadMedia(
+        pathOrUri: String,
+        resumePositionMs: Long = 0L,
+        headers: Map<String, String> = emptyMap(),
+        isHls: Boolean = false
+    ) {
         val uri = if (pathOrUri.startsWith("content://") || pathOrUri.startsWith("file://") || pathOrUri.startsWith("http")) {
             Uri.parse(pathOrUri)
         } else {
             Uri.fromFile(File(pathOrUri))
         }
-        exoPlayer.setMediaItem(MediaItem.fromUri(uri))
+        httpDataSourceFactory.setDefaultRequestProperties(headers)
+        val mediaItem = MediaItem.Builder()
+            .setUri(uri)
+            .apply {
+                if (isHls || pathOrUri.contains(".m3u8", ignoreCase = true)) {
+                    setMimeType(MimeTypes.APPLICATION_M3U8)
+                }
+            }
+            .build()
+        exoPlayer.setMediaItem(mediaItem)
         exoPlayer.prepare()
         if (resumePositionMs > 0L) {
             exoPlayer.seekTo(resumePositionMs)

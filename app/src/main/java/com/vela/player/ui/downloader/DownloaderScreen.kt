@@ -70,6 +70,7 @@ fun DownloaderScreen(
     onAnalyze: () -> Unit,
     onSelectOption: (DownloadOption) -> Unit,
     onStartDownload: () -> Unit,
+    onStreamNow: (AnalyzedMedia) -> Unit,
     onOpenInstagramLogin: () -> Unit,
     onCancelJob: (String) -> Unit,
     onDismissJob: (String) -> Unit,
@@ -120,7 +121,7 @@ fun DownloaderScreen(
                     )
                 }
                 Text(
-                    text = "Paste or share any YouTube video or Instagram Reel, Story, or Photo link.",
+                    text = "Paste or share a YouTube, Instagram or Dailymotion link. Dailymotion videos can be watched ad-free right here.",
                     style = typography.bodySmall,
                     color = colors.textSecondary
                 )
@@ -137,7 +138,7 @@ fun DownloaderScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "YouTube & Instagram Link",
+                            text = "YouTube, Instagram & Dailymotion Link",
                             style = typography.cardTitle,
                             color = colors.textPrimary
                         )
@@ -220,6 +221,7 @@ fun DownloaderScreen(
                     selectedOption = state.selectedOption,
                     onSelectOption = onSelectOption,
                     onStartDownload = onStartDownload,
+                    onStreamNow = { onStreamNow(analyzed) },
                     onOpenInstagramLogin = onOpenInstagramLogin
                 )
             }
@@ -268,7 +270,7 @@ fun DownloaderScreen(
                     )
                     Spacer(modifier = Modifier.height(VelaSpacing.s8))
                     Text(
-                        text = "Tap Share in the YouTube or Instagram app and choose VelaPlayer to inspect resolutions (360p, 720p, 1080p, Audio Only, or IG Photos) in one tap.",
+                        text = "Tap Share in the YouTube, Instagram or Dailymotion app and choose VelaPlayer to inspect resolutions (360p, 720p, 1080p, Audio Only, or IG Photos) in one tap.",
                         style = typography.bodySmall,
                         color = colors.textSecondary
                     )
@@ -285,6 +287,7 @@ private fun AnalyzedMediaCard(
     selectedOption: DownloadOption,
     onSelectOption: (DownloadOption) -> Unit,
     onStartDownload: () -> Unit,
+    onStreamNow: () -> Unit,
     onOpenInstagramLogin: () -> Unit
 ) {
     val colors = VelaTheme.colors
@@ -382,7 +385,11 @@ private fun AnalyzedMediaCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(VelaSpacing.s8)) {
                     VelaBadge(
                         label = media.platform.label,
-                        tone = if (media.platform == DownloadPlatform.YOUTUBE) VelaBadgeTone.DANGER else VelaBadgeTone.INFO
+                        tone = when (media.platform) {
+                            DownloadPlatform.YOUTUBE -> VelaBadgeTone.DANGER
+                            DownloadPlatform.DAILYMOTION -> VelaBadgeTone.WARNING
+                            else -> VelaBadgeTone.INFO
+                        }
                     )
                     if (media.durationSec > 0L) {
                         VelaBadge(
@@ -444,6 +451,16 @@ private fun AnalyzedMediaCard(
         }
 
         Spacer(modifier = Modifier.height(VelaSpacing.s16))
+
+        if (media.streamUrl != null) {
+            VelaSecondaryButton(
+                text = "Watch now · no ads",
+                iconRes = VelaIcons.Play,
+                onClick = onStreamNow,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(VelaSpacing.s8))
+        }
 
         VelaPrimaryButton(
             text = "Save ${selectedOption.label}",

@@ -18,6 +18,7 @@ enum class MediaType(val label: String) {
 enum class MediaSource(val label: String) {
     YOUTUBE("YouTube"),
     INSTAGRAM("Instagram"),
+    DAILYMOTION("Dailymotion"),
     LOCAL("Device");
 
     companion object {

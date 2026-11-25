@@ -38,4 +38,4 @@ Kotlin, Jetpack Compose, Room, DataStore, Media3 ExoPlayer, Coil, and an on-devi
 
 ## Version
 
-Current release: **0.2.0**. See [CHANGELOG.md](CHANGELOG.md).
+Current release: **0.2.1**. See [CHANGELOG.md](CHANGELOG.md).

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — 2026-11-26
+
+Fixes Dailymotion streaming.
+
+- Watch now no longer stalls at 0:00: streams now use the chosen quality's own playlist instead of the master playlist, which Dailymotion refused without its session cookies
+- When a stream can't start, or an expired stream link can't be refreshed, the player now shows why instead of failing silently
+
 ## 0.2.0 — 2026-11-25
 
 Dailymotion support, with ad-free streaming.

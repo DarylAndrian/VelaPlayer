@@ -12,6 +12,7 @@ import android.content.res.Configuration
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.annotation.OptIn
 import androidx.activity.compose.setContent
@@ -79,14 +80,16 @@ class PlayerActivity : ComponentActivity() {
     private val streamErrorListener = object : Player.Listener {
         @OptIn(UnstableApi::class)
         override fun onPlayerError(error: PlaybackException) {
-            val source = streamSourceUrl ?: return
+            val source = streamSourceUrl
             val cause = error.cause
             val expired = cause is HttpDataSource.InvalidResponseCodeException &&
                 (cause.responseCode == 403 || cause.responseCode == 410)
-            if (expired && !streamRefreshed) {
+            if (source != null && expired && !streamRefreshed) {
                 streamRefreshed = true
                 refreshStream(source)
+                return
             }
+            showPlaybackError(error)
         }
     }
 
@@ -273,12 +276,30 @@ class PlayerActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(UnstableApi::class)
+    private fun showPlaybackError(error: PlaybackException) {
+        val cause = error.cause
+        val message = if (cause is HttpDataSource.InvalidResponseCodeException) {
+            "Couldn't start the stream (HTTP ${cause.responseCode}). Try again, or update the yt-dlp engine in Settings."
+        } else {
+            "Couldn't play this video (${error.errorCodeName})."
+        }
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
     /** Signed stream URLs expire after a few hours; fetch a fresh one and resume where we were. */
     private fun refreshStream(sourceUrl: String) {
         val resumeMs = controller.exoPlayer.currentPosition.coerceAtLeast(0L)
         lifecycleScope.launch {
             val fresh = app.linkAnalyzer.analyze(sourceUrl)
-            val url = fresh.streamUrl ?: return@launch
+            val url = fresh.streamUrl ?: run {
+                Toast.makeText(
+                    this@PlayerActivity,
+                    fresh.errorMessage ?: "Couldn't refresh the stream. Go back and try Watch now again.",
+                    Toast.LENGTH_LONG
+                ).show()
+                return@launch
+            }
             controller.loadMedia(url, resumeMs, fresh.streamHeaders, isHls = true)
         }
     }

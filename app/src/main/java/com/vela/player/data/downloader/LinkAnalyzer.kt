@@ -191,12 +191,14 @@ class LinkAnalyzer(
     }
 
     /**
-     * Prefers the HLS master manifest (lets ExoPlayer adapt quality); falls back to the selected
-     * format's URL, then to the tallest listed format.
+     * Prefers the selected format's own playlist URL; falls back to the master manifest,
+     * then to the tallest listed format.
      */
     private fun resolveStreamUrl(info: VideoInfo): String? {
-        info.manifestUrl?.takeIf { it.isNotBlank() }?.let { return it }
+        // Prefer the selected variant playlist: its CDN URL carries its own signed token.
+        // The master manifest (cdndirector) is tied to Dailymotion session cookies and 403s in ExoPlayer.
         info.url?.takeIf { it.isNotBlank() }?.let { return it }
+        info.manifestUrl?.takeIf { it.isNotBlank() }?.let { return it }
         return info.formats
             ?.filter { !it.url.isNullOrBlank() }
             ?.maxByOrNull { it.height }
